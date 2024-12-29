@@ -1,13 +1,15 @@
 var canvas = document.getElementById("main-canvas");
 
-WIDTH = 1280;
-HEIGHT = 720;
+WIDTH = 1000;
+HEIGHT = 1000;
 
 canvas.width = WIDTH;
 canvas.height = HEIGHT;
 
 mazeWidth = canvas.width - 100;
 mazeHeight = canvas.height - 100;
+
+canvas_container = document.getElementById("canvas_img_box");
 
 var g = canvas.getContext("2d");
 
@@ -176,12 +178,11 @@ function setup() {
     mazeCtx.drawImage(groundOverlay, 0, 0, cellSize * grid.length, cellSize * grid[0].length);
     for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
-            if ((r === 0 && c === 0) || (r === rows - 1 && c === cols - 1)) { continue; }
+            if (r === 0 && c === 0) { continue; }
             grid[r][c].show(mazeCtx);
         }
     }
     grid[0][0].show(mazeCtx);
-    grid[rows - 1][cols - 1].show(mazeCtx);
 
     // Initialize player at the top-left corner
     player = new Player(0, 0);
@@ -339,12 +340,6 @@ function Cell(r, c) {
         var isStart = this.r === 0 && this.c === 0;
         var isEnd = this.r === rows - 1 && this.c === cols - 1;
         if (isLit) {
-            if (isStart) {
-                ctx.drawImage(startSquare, x, y, cellSize * 1.2, cellSize * 1.2);
-            }
-            if (isEnd) {
-                ctx.drawImage(endSquare, x + 4, y, cellSize * 1.2, cellSize * 1.2);
-            }
             if (this.wallLeft && !isStart) {
                 ctx.drawImage(wall, x - cellSize / 2, y, cellSize * 1.2, cellSize * 1.2);
             }
@@ -366,6 +361,13 @@ function Cell(r, c) {
                 ctx.rotate(Math.PI / 2);
                 ctx.drawImage(wall, -cellSize + cellSize, -cellSize + cellSize / 2 - 10, cellSize * 1.2, cellSize * 1.2);
                 ctx.restore();
+            }
+
+            if (isStart) {
+                ctx.drawImage(startSquare, x, y, cellSize * 1.2, cellSize * 1.2);
+            }
+            if (isEnd) {
+                ctx.drawImage(endSquare, x + 4, y, cellSize * 1.2, cellSize * 1.2);
             }
 
             // wall.strokeStyle = "yellow"; // Set the wall color to black
@@ -454,7 +456,7 @@ function updateLightmap(light) {
 
 
 function renderOpeningNeuro() {
-    
+    canvas_container.style = "background-color: pink";
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "pink";
     g.fillRect(0, 0, canvas.width, canvas.height);
@@ -467,7 +469,7 @@ function renderOpeningNeuro() {
 }
 
 function renderOpeningEvil() {
-    
+    canvas_container.style = "background-color: black";
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
     g.fillRect(0, 0, canvas.width, canvas.height);
@@ -523,9 +525,10 @@ function renderLose() {
 }
 
 function drawGameNeuro() {
+    canvas_container.style = "background-color: #ADD8E6";
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
-    g.fillStyle = "black";
+    g.fillStyle = "#ADD8E6";
     g.fillRect(0, 0, canvas.width, canvas.height);
 
     g.fillStyle = 'rgb(162, 140, 124)';
@@ -541,7 +544,7 @@ function drawGameNeuro() {
     player.show();
 
     // Display the number of lights remaining
-    g.fillStyle = "white";
+    g.fillStyle = "black";
     g.font = "32px Arial";
     g.textBaseline="top";
     g.fillText("Press [space] to leave a candle.", 200, canvas.height - 70);
@@ -549,6 +552,7 @@ function drawGameNeuro() {
 }
 
 function drawGameEvil() {
+    canvas_container.style = "background-color: black";
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
@@ -604,12 +608,11 @@ function updateSize(force = false) {
     // Draw the grid to an offscreen texture.
     for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
-            if ((r === 0 && c === 0) || (r === rows - 1 && c === cols - 1)) { continue; }
+            if (r === 0 && c === 0) { continue; }
             grid[r][c].show(mazeCtx);
         }
     }
     grid[0][0].show(mazeCtx);
-    grid[rows - 1][cols - 1].show(mazeCtx);
 }
 
 winning_start_seconds = 0;
