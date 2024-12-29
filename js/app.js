@@ -5,6 +5,9 @@ canvas.height = window.innerHeight;
 
 var g = canvas.getContext("2d");
 
+var mazeCanvas = new OffscreenCanvas(canvas.width, canvas.height);
+var mazeCtx = mazeCanvas.getContext("2d");
+
 var cols = 12;
 var rows = 12;
 var cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
@@ -67,6 +70,13 @@ function setup() {
         }
     }
 
+    // Draw the grid to an offscreen texture.
+    for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+            grid[r][c].show(mazeCtx);
+        }
+    }
+
     // Initialize player at the top-left corner
     player = new Player(0, 0);
 
@@ -88,7 +98,7 @@ function setup() {
 
 function renderLight(x, y, radius) {
     g.save()
-    g.globalCompositeOperation = "lighter"
+    g.globalCompositeOperation = "lighter";
     var rnd = 0.05 * Math.sin((10 * Date.now()) / 1000)
     radius = radius * (1 + rnd)
     var radialGradient = g.createRadialGradient(x, y, 0, x, y, radius)
@@ -98,7 +108,7 @@ function renderLight(x, y, radius) {
     radialGradient.addColorStop(0.9, "#110")
     radialGradient.addColorStop(1, "#000")
     g.fillStyle = radialGradient
-    g.fillRect(0, 0, canvas.width, canvas.height)
+    g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     g.restore()
 }
 
@@ -202,70 +212,67 @@ function Cell(r, c) {
         }
     };
 
-    this.show = function () {
+    this.show = function(ctx) {
         var x = this.c * cellSize;
         var y = this.r * cellSize;
 
-        var isNearPlayer = Math.abs(this.r - player.r) <= 1 && Math.abs(this.c - player.c) <= 1;
-        var isLit = isNearPlayer || lightmap[this.r][this.c] >= 1;
+        // var isNearPlayer = Math.abs(this.r - player.r) <= 1 && Math.abs(this.c - player.c) <= 1;
+        // var isLit = isNearPlayer || lightmap[this.r][this.c] >= 1;
         isLit = true;
         if (isLit) {
-            g.save();
-            g.globalCompositeOperation = "multiply";
             if (this.wallLeft) {
-                g.drawImage(wall, x - cellSize / 2, y, cellSize*1.2, cellSize*1.2);
+                ctx.drawImage(wall, x - cellSize / 2, y, cellSize * 1.2, cellSize * 1.2);
             }
 
             if (this.wallUp) {
-                g.save();
-                g.translate(x + cellSize / 2, y + cellSize / 2);
-                g.rotate(Math.PI / 2);
-                g.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize*1.2, cellSize*1.2);
-                g.restore();
+                ctx.save();
+                ctx.translate(x + cellSize / 2, y + cellSize / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize * 1.2, cellSize * 1.2);
+                ctx.restore();
             }
 
             if (this.wallRight && this.c == cols - 1) {
-                g.drawImage(wall, x + cellSize / 2, y, cellSize*1.2, cellSize*1.2);
+                ctx.drawImage(wall, x + cellSize / 2, y, cellSize * 1.2, cellSize * 1.2);
             }
 
-            if (this.wallUp) {
-                g.save();
-                g.translate(x + cellSize / 2, y + cellSize / 2);
-                g.rotate(Math.PI / 2);
-                g.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize*1.2, cellSize*1.2);
-                g.restore();
-            }
-            g.restore();
+            // if (this.wallDown && this.r == rows - 1) {
+            //     ctx.save();
+            //     ctx.translate(x + cellSize / 2, y + cellSize / 2);
+            //     ctx.rotate(Math.PI / 2);
+            //     ctx.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize * 1.2, cellSize * 1.2);
+            //     ctx.restore();
+            // }
 
-            // g.strokeStyle = "yellow"; // Set the wall color to black
-            // g.lineWidth = 8; // Increase the line width to make the walls thicker
+            // wall.strokeStyle = "yellow"; // Set the wall color to black
+            // ctx.lineWidth = 8; // Increase the line width to make the walls thicker
             // if (this.wallUp) {
-            //     g.beginPath();
-            //     g.moveTo(x, y);
-            //     g.lineTo(x + cellSize, y);
-            //     g.stroke();
+            //     ctx.beginPath();
+            //     ctx.moveTo(x, y);
+            //     ctx.lineTo(x + cellSize, y);
+            //     ctx.stroke();
             // }
             // if (this.wallRight) {
-            //     g.beginPath();
-            //     g.moveTo(x + cellSize, y);
-            //     g.lineTo(x + cellSize, y + cellSize);
-            //     g.stroke();
+            //     ctx.beginPath();
+            //     ctx.moveTo(x + cellSize, y);
+            //     ctx.lineTo(x + cellSize, y + cellSize);
+            //     ctx.stroke();
             // }
             // if (this.wallDown) {
-            //     g.beginPath();
-            //     g.moveTo(x + cellSize, y + cellSize);
-            //     g.lineTo(x, y + cellSize);
-            //     g.stroke();
+            //     ctx.beginPath();
+            //     ctx.moveTo(x + cellSize, y + cellSize);
+            //     ctx.lineTo(x, y + cellSize);
+            //     ctx.stroke();
             // }
             // if (this.wallLeft) {
-            //     g.beginPath();
-            //     g.moveTo(x, y + cellSize);
-            //     g.lineTo(x, y);
-            //     g.stroke();
+            //     ctx.beginPath();
+            //     ctx.moveTo(x, y + cellSize);
+            //     ctx.lineTo(x, y);
+            //     ctx.stroke();
             // }
         } else {
-            g.fillStyle = "black";
-            g.fillRect(x, y, cellSize, cellSize);
+            ctx.fillStyle = "black";
+            ctx.fillRect(x, y, cellSize, cellSize);
         }
     };
 }
@@ -345,6 +352,8 @@ function startGame() {
 function drawGame() {
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = "black";
+    g.fillRect(0, 0, canvas.width, canvas.height);
 
     // Render all lights
     player.showLight();
@@ -365,12 +374,11 @@ function drawGame() {
     g.fillStyle = "white";
     g.fillText("Exit", x + 20, y + 20);
 
-    // Draw the grid
-    for (var r = 0; r < rows; r++) {
-        for (var c = 0; c < cols; c++) {
-            grid[r][c].show();
-        }
-    }
+    // Draw the maze
+    g.save();
+    g.globalCompositeOperation = "multiply";
+    g.drawImage(mazeCanvas, 0, 0, canvas.width, canvas.height);
+    g.restore();
 
     // Draw the player, objects, and UI
     lights.forEach(light => light.drawCandle());
@@ -378,9 +386,24 @@ function drawGame() {
 }
 
 function updateSize() {
+    if (canvas.width === window.innerWidth && canvas.height === window.innerHeight) {
+        return;
+    }
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
+
+    if (grid.length === 0) {
+        return;
+    }
+    mazeCanvas = new OffscreenCanvas(canvas.width, canvas.height);
+    mazeCtx = mazeCanvas.getContext("2d");
+    // Draw the grid to an offscreen texture.
+    for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+            grid[r][c].show(mazeCtx);
+        }
+    }
 }
 
 function gameLoop() {
