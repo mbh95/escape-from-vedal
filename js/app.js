@@ -1,7 +1,10 @@
 var canvas = document.getElementById("main-canvas");
 
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+WIDTH = 1280;
+HEIGHT = 720;
+
+canvas.width = WIDTH;
+canvas.height = HEIGHT;
 
 mazeWidth = canvas.width - 100;
 mazeHeight = canvas.height - 100;
@@ -51,22 +54,23 @@ var win_screen_2 = loadImage("./img/win_2.png");
 
 var lose_1 = loadImage("./img/lose_1.png");
 
-var bgm_playing = false;
+var bgm_ever_started = false;
 var bgm = new Audio('./audio/bensound-prism.mp3');
 bgm.loop = true;
 
-function start_bgm() {
-    if (!click_initiated) {
-        return;
-    }
-    bgm.play();
-    bgm_playing = true;
-}
+// function playBgm() {
+//     console.log("START BGM");
+//     if (!click_initiated) {
+//         return;
+//     }
+//     bgm.volume = 1.0;
+//     bgm_ever_started = true;
+// }
 
-function stop_bgm() {
-    bgm.pause();
-    bgm_playing = false;
-}
+// function pauseBgm() {
+//     console.log("STOP BGM");
+//     bgm.pause
+// }
 
 var win_img = document.createElement("img");
 win_img.style.display = "none";
@@ -117,6 +121,13 @@ function hide_lose_image() {
 function vineboom() {
     var audio = new Audio('./audio/vine-boom.mp3');
     audio.play();
+}
+
+function playBgm() {
+    document.getElementById("bgm").play();
+}
+function pauseBgm() {
+    document.getElementById("bgm").pause();
 }
 
 function setup() {
@@ -443,7 +454,7 @@ function updateLightmap(light) {
 
 
 function renderOpeningNeuro() {
-    start_bgm();
+    
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "pink";
     g.fillRect(0, 0, canvas.width, canvas.height);
@@ -456,7 +467,7 @@ function renderOpeningNeuro() {
 }
 
 function renderOpeningEvil() {
-    start_bgm();
+    
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
     g.fillRect(0, 0, canvas.width, canvas.height);
@@ -469,7 +480,6 @@ function renderOpeningEvil() {
 }
 
 function renderWin() {
-    start_bgm();
     if (win_screen_counter != win_screens.length - 1) {
         g.clearRect(0, 0, canvas.width, canvas.height);
         g.fillStyle = "pink";
@@ -493,7 +503,6 @@ function renderWin() {
 }
 
 function renderLose() {
-    stop_bgm();
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
     g.fillRect(0, 0, canvas.width, canvas.height);
@@ -514,7 +523,6 @@ function renderLose() {
 }
 
 function drawGameNeuro() {
-    start_bgm();
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
@@ -541,7 +549,6 @@ function drawGameNeuro() {
 }
 
 function drawGameEvil() {
-    start_bgm();
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
@@ -577,11 +584,11 @@ function drawGameEvil() {
 }
 
 function updateSize(force = false) {
-    if (!force && canvas.width === window.innerWidth && canvas.height === window.innerHeight) {
+    if (!force && canvas.width === WIDTH && canvas.height === HEIGHT) {
         return;
     }
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
     mazeWidth = canvas.width - 100;
     mazeHeight = canvas.height - 100;
     cellSize = Math.min(Math.ceil(mazeWidth / cols), Math.ceil(mazeHeight / rows));
@@ -617,16 +624,15 @@ function gameLoop() {
     } else if (gameState === "opening_evil") {
         renderOpeningEvil();
     } else if (gameState === "playing_evil" || gameState === "winning_evil") {
+        drawGameEvil();
         let now_seconds = new Date().getTime() / 1000;
         let time_remaining = timer_length_seconds - (now_seconds - timer_start_seconds);
         if (time_remaining <= 0) {
             gameState = "lose";
-            if (lose_screen_counter >= lose_screens.length - 1) {
-                show_lose_image();
-            }
+            show_lose_image();
+            pauseBgm();
             vineboom();
         }
-        drawGameEvil();
     } else if (gameState === "win") {
         renderWin();
     } else if (gameState === "lose") {
@@ -701,6 +707,7 @@ window.addEventListener("keydown", function (e) {
                 reset_screens();
                 hide_lose_image();
                 gameState = "opening_neuro";
+                playBgm();
             }
         }
     }
@@ -724,20 +731,26 @@ var click_initiated = false;
 // Listen for user interaction to start background music
 window.addEventListener("click", function() {
     click_initiated = true;
-    if (!bgm_playing && gameState == "opening_neuro") {
-        start_bgm();
+    if (!bgm_ever_started && gameState == "opening_neuro") {
+        playBgm();
     }
 });
 
 window.addEventListener("keydown", function() {
     click_initiated = true;
-    if (!bgm_playing && gameState == "opening_neuro") {
-        start_bgm();
+    if (!bgm_ever_started && gameState == "opening_neuro") {
+        playBgm();
     }
 });
 
 addEventListener("resize", (event) => updateSize());
 addEventListener("fullscreenchange", (event) => updateSize());
+
+window.addEventListener("keydown", function(e) {
+    if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+        e.preventDefault();
+    }
+}, false);
 
 // Start the game loop
 requestAnimationFrame(gameLoop);
