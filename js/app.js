@@ -20,6 +20,7 @@ var path = [];
 var player;
 var lights = [];
 var lightmap = Array(rows).fill().map(() => Array(cols).fill(0));
+var gameState = "opening"; // Track the game state
 
 function setup() {
     var unvisited = [];
@@ -59,6 +60,21 @@ function setup() {
 
     // Initialize player at the top-left corner
     player = new Player(0, 0);
+
+    // Register controls.
+    window.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowUp") {
+            player.move("up");
+        } else if (e.key === "ArrowRight") {
+            player.move("right");
+        } else if (e.key === "ArrowDown") {
+            player.move("down");
+        } else if (e.key === "ArrowLeft") {
+            player.move("left");
+        } else if (e.key === " ") {
+            player.dropObject();
+        }
+    });
 }
 
 function renderLight(x, y, radius) {
@@ -91,12 +107,39 @@ function Light(r, c) {
     };
 }
 
+var neuroFront = new Image();
+var neuroLeft = new Image();
+var neuroRight = new Image();
+var neuroBack = new Image();
+neuroFront.src = '../img/neuro_front.png';
+neuroLeft.src = '../img/neuro_left.png';
+neuroRight.src = '../img/neuro_right.png';
+neuroBack.src = '../img/neuro_back.png';
+
 function Player(r, c) {
     this.r = r;
     this.c = c;
     this.visualR = r;
     this.visualC = c;
     this.lights = 3;
+    this.currentSprite = neuroFront;
+
+
+    this.move = function (dir) {
+        if (dir === "up" && this.r > 0 && !grid[this.r][this.c].wallUp) {
+            this.r--;
+            this.currentSprite = neuroBack;
+        } else if (dir === "right" && this.c < cols - 1 && !grid[this.r][this.c].wallRight) {
+            this.c++;
+            this.currentSprite = neuroRight;
+        } else if (dir === "down" && this.r >= 0 && !grid[this.r][this.c].wallDown) {
+            this.r++;
+            this.currentSprite = neuroFront;
+        } else if (dir === "left" && this.c > 0 && !grid[this.r][this.c].wallLeft) {
+            this.c--;
+            this.currentSprite = neuroLeft;
+        }
+    };
 
     this.show = function () {
 
@@ -104,8 +147,7 @@ function Player(r, c) {
         var y = this.visualR * cellSize;
         renderLight(x + cellSize / 2, y + cellSize / 2, 3 * cellSize / 2);
 
-        g.fillStyle = "yellow";
-        g.fillRect(x + cellSize / 4, y + cellSize / 4, cellSize / 2, cellSize / 2);
+        g.drawImage(this.currentSprite, x, y, cellSize, cellSize);
         this.visualR += (this.r - this.visualR) * 0.1;
         this.visualC += (this.c - this.visualC) * 0.1;
 
@@ -113,18 +155,6 @@ function Player(r, c) {
         g.fillStyle = "white";
         g.font = "16px Arial";
         g.fillText("Lights remaining: " + this.lights, 10, canvas.height - 10);
-    };
-
-    this.move = function (dir) {
-        if (dir === "up" && this.r > 0 && !grid[this.r][this.c].wallUp) {
-            this.r--;
-        } else if (dir === "right" && this.c < cols - 1 && !grid[this.r][this.c].wallRight) {
-            this.c++;
-        } else if (dir === "down" && this.r >= 0 && !grid[this.r][this.c].wallDown) {
-            this.r++;
-        } else if (dir === "left" && this.c > 0 && !grid[this.r][this.c].wallLeft) {
-            this.c--;
-        }
     };
 
     this.dropObject = function () {
@@ -266,36 +296,70 @@ function updateLightmap(light) {
     }
 }
 
-window.addEventListener("keydown", function (e) {
-    if (e.key === "ArrowUp") {
-        player.move("up");
-    } else if (e.key === "ArrowRight") {
-        player.move("right");
-    } else if (e.key === "ArrowDown") {
-        player.move("down");
-    } else if (e.key === "ArrowLeft") {
-        player.move("left");
-    } else if (e.key === " ") {
-        player.dropObject();
-    }
-});
 
-function update() {
-    updateSize();
+function renderOpeningScreen() {
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = "black";
+    g.fillRect(0, 0, canvas.width, canvas.height);
+
+    g.fillStyle = "white";
+    g.font = "30px Arial";
+    g.textAlign = "center";
+    g.fillText("Welcome to Neuro Maze", canvas.width / 2, canvas.height / 2 - 40);
+    g.font = "20px Arial";
+    g.fillText("Press Enter to Start", canvas.width / 2, canvas.height / 2 + 20);
+}
+
+function startGame() {
+    gameState = "playing";
+    setup();
+    // Start the game loop
+    requestAnimationFrame(gameLoop);
+}
+
+function drawGame() {
+    
+
+    // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
 
-    lights.forEach(light => light.show());
-    player.show();
+    // Draw the start square (top-left corner)
+    g.fillStyle = "green";
+    g.fillRect(0, 0, cellSize, cellSize);
 
+    // Draw the end square (bottom-right corner)
+    g.fillStyle = "green";
+    g.fillRect((cols - 1) * cellSize, (rows - 1) * cellSize, cellSize, cellSize);
+
+    // Draw the grid
     for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
             grid[r][c].show();
         }
     }
 
+    // Draw the player character
+    player.show();
 
-    requestAnimationFrame(update);
+    lights.forEach(light => light.show());
 }
 
-setup();
-update();
+function gameLoop() {
+    if (gameState === "playing") {
+        drawGame();
+    } else if (gameState === "opening") {
+        renderOpeningScreen();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+// Listen for key presses to start the game
+window.addEventListener("keydown", function(event) {
+    if (event.key === "Enter" && gameState === "opening") {
+        g.clearRect(0, 0, canvas.width, canvas.height);
+        startGame();
+    }
+});
+
+// Start the game loop
+requestAnimationFrame(gameLoop);
