@@ -3,14 +3,17 @@ var canvas = document.getElementById("main-canvas");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+mazeWidth = canvas.width - 100;
+mazeHeight = canvas.height - 100;
+
 var g = canvas.getContext("2d");
 
 var mazeCanvas = new OffscreenCanvas(canvas.width, canvas.height);
 var mazeCtx = mazeCanvas.getContext("2d");
 
-var cols = 12;
-var rows = 12;
-var cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
+var cols = 16;
+var rows = 16;
+var cellSize = Math.min(Math.ceil(mazeWidth / cols), Math.ceil(mazeHeight / rows));
 
 function loadImage(path) {
     var img = new Image();
@@ -19,23 +22,109 @@ function loadImage(path) {
 }
 
 // Load sprites
-var neuroFront = loadImage('../img/neuro_front.png');
-var neuroLeft = loadImage('../img/neuro_left.png');
-var neuroRight = loadImage('../img/neuro_right.png');
-var neuroBack = loadImage('../img/neuro_back.png');
-var candle = loadImage('../img/candle.png');
-var groundOverlay = loadImage('../img/ground_overlay.png');
-var wall = loadImage('../img/wall.png');
+var neuroFront = loadImage('./img/neuro_front.png');
+var neuroLeft = loadImage('./img/neuro_left.png');
+var neuroRight = loadImage('./img/neuro_right.png');
+var neuroBack = loadImage('./img/neuro_back.png');
+var evilFront = loadImage('./img/evil_front.png');
+var evilLeft = loadImage('./img/evil_left.png');
+var evilRight = loadImage('./img/evil_right.png');
+var evilBack = loadImage('./img/evil_back.png');
+var candle = loadImage('./img/candle.png');
+var groundOverlay = loadImage('./img/ground_overlay.png');
+var startSquare = loadImage('./img/start_square.png');
+var endSquare = loadImage('./img/end_square.png');
+var wall = loadImage('./img/wall.png');
+
+var press_enter = loadImage("./img/press_enter.png");
+
+var neuro_opening_1 = loadImage("./img/neuro_opening_1.png");
+var neuro_opening_2 = loadImage("./img/neuro_opening_2.png");
+var neuro_opening_3 = loadImage("./img/neuro_opening_3.png");
+var neuro_opening_4 = loadImage("./img/neuro_opening_4.png");
+var neuro_opening_5 = loadImage("./img/neuro_opening_5.png");
+
+var evil_opening_1 = loadImage("./img/evil_opening_1.png");
+
+var win_screen_1 = loadImage("./img/win_1.png");
+var win_screen_2 = loadImage("./img/win_2.png");
+
+var lose_1 = loadImage("./img/lose_1.png");
+
+var bgm_playing = false;
+var bgm = new Audio('./audio/bensound-prism.mp3');
+bgm.loop = true;
+
+function start_bgm() {
+    if (!click_initiated) {
+        return;
+    }
+    bgm.play();
+    bgm_playing = true;
+}
+
+function stop_bgm() {
+    bgm.pause();
+    bgm_playing = false;
+}
+
+var win_img = document.createElement("img");
+win_img.style.display = "none";
+win_img.className = "center";
+win_img.src = "./img/win_2.png";
+var src = document.getElementById("win_img_box");
+src.appendChild(win_img);
+
+var lose_img = document.createElement("img");
+lose_img.style.display = "none";
+lose_img.className = "center";
+lose_img.src = "./img/lose_1.png";
+var src = document.getElementById("lose_img_box");
+src.appendChild(lose_img);
 
 var grid = [];
 var path = [];
 var player;
 var lights = [];
 var lightmap = Array(rows).fill().map(() => Array(cols).fill(0));
-var gameState = "opening"; // Track the game state
+var gameState = "opening_neuro"; // Track the game state
+
+var timer_length_seconds = 15;
+var timer_start_seconds = -1;
+
+function show_win_image() {
+    canvas.style.display = "none";
+    win_img.style.display = "";
+}
+
+function hide_win_image() {
+    canvas.style.display = "";
+    g = canvas.getContext("2d");
+    win_img.style.display = "none";
+}
+
+function show_lose_image() {
+    canvas.style.display = "none";
+    lose_img.style.display = "";
+}
+
+function hide_lose_image() {
+    canvas.style.display = "";
+    g = canvas.getContext("2d");
+    lose_img.style.display = "none";
+}
+
+function vineboom() {
+    var audio = new Audio('./audio/vine-boom.mp3');
+    audio.play();
+}
 
 function setup() {
+    gameState = "playing_neuro";
     var unvisited = [];
+    grid = [];
+    lightmap = Array(rows).fill().map(() => Array(cols).fill(0));
+    lights = [];
     for (var r = 0; r < rows; r++) {
         grid.push([]);
         for (var c = 0; c < cols; c++) {
@@ -44,6 +133,7 @@ function setup() {
             unvisited.push(cell);
         }
     }
+    updateSize(true);
 
     // Start with a random cell
     var start = unvisited.splice(Math.floor(Math.random() * unvisited.length), 1)[0];
@@ -71,29 +161,19 @@ function setup() {
     }
 
     // Draw the grid to an offscreen texture.
+    mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
+    mazeCtx.drawImage(groundOverlay, 0, 0, cellSize * grid.length, cellSize * grid[0].length);
     for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
+            if ((r === 0 && c === 0) || (r === rows - 1 && c === cols - 1)) { continue; }
             grid[r][c].show(mazeCtx);
         }
     }
+    grid[0][0].show(mazeCtx);
+    grid[rows - 1][cols - 1].show(mazeCtx);
 
     // Initialize player at the top-left corner
     player = new Player(0, 0);
-
-    // Register controls.
-    window.addEventListener("keydown", function (e) {
-        if (e.key === "ArrowUp") {
-            player.move("up");
-        } else if (e.key === "ArrowRight") {
-            player.move("right");
-        } else if (e.key === "ArrowDown") {
-            player.move("down");
-        } else if (e.key === "ArrowLeft") {
-            player.move("left");
-        } else if (e.key === " ") {
-            player.dropObject();
-        }
-    });
 }
 
 function renderLight(x, y, radius) {
@@ -141,19 +221,50 @@ function Player(r, c) {
     this.currentSprite = neuroFront;
     this.lights = 3;
 
+    this.reset = function (sprite) {
+        this.r = 0;
+        this.c = 0;
+        this.visualR = 0;
+        this.visualC = 0;
+        this.currentSprite = sprite;
+    }
     this.move = function (dir) {
         if (dir === "up" && this.r > 0 && !grid[this.r][this.c].wallUp) {
             this.r--;
-            this.currentSprite = neuroBack;
+            if (gameState === "playing_neuro") {
+                this.currentSprite = neuroBack;
+            } else if (gameState === "playing_evil") {
+                this.currentSprite = evilBack;
+            }
         } else if (dir === "right" && this.c < cols - 1 && !grid[this.r][this.c].wallRight) {
             this.c++;
-            this.currentSprite = neuroRight;
+            if (gameState === "playing_neuro") {
+                this.currentSprite = neuroRight;
+            } else if (gameState === "playing_evil") {
+                this.currentSprite = evilRight;
+            }
         } else if (dir === "down" && this.r >= 0 && !grid[this.r][this.c].wallDown) {
             this.r++;
-            this.currentSprite = neuroFront;
+            if (gameState === "playing_neuro") {
+                this.currentSprite = neuroFront;
+            } else if (gameState === "playing_evil") {
+                this.currentSprite = evilFront
+            }
         } else if (dir === "left" && this.c > 0 && !grid[this.r][this.c].wallLeft) {
             this.c--;
-            this.currentSprite = neuroLeft;
+            if (gameState === "playing_neuro") {
+                this.currentSprite = neuroLeft;
+            } else if (gameState === "playing_evil") {
+                this.currentSprite = evilLeft;
+            }
+        }
+
+        if (this.r === rows - 1 && this.c === cols - 1 && gameState === "playing_neuro") {
+            gameState = "winning_neuro";
+            winning_start_seconds = new Date().getTime() / 1000;
+        } else if (this.r === rows - 1 && this.c === cols - 1 && gameState === "playing_evil") {
+            gameState = "winning_evil";
+            winning_start_seconds = new Date().getTime() / 1000;
         }
     };
 
@@ -170,11 +281,6 @@ function Player(r, c) {
         g.drawImage(this.currentSprite, x, y, cellSize, cellSize);
         this.visualR += (this.r - this.visualR) * 0.1;
         this.visualC += (this.c - this.visualC) * 0.1;
-
-        // Display the number of highlight objects remaining
-        g.fillStyle = "white";
-        g.font = "16px Arial";
-        g.fillText("Candles remaining: " + this.lights, 200, canvas.height - 20);
     };
 
     this.dropObject = function () {
@@ -212,19 +318,26 @@ function Cell(r, c) {
         }
     };
 
-    this.show = function(ctx) {
+    this.show = function (ctx) {
         var x = this.c * cellSize;
         var y = this.r * cellSize;
 
         // var isNearPlayer = Math.abs(this.r - player.r) <= 1 && Math.abs(this.c - player.c) <= 1;
         // var isLit = isNearPlayer || lightmap[this.r][this.c] >= 1;
-        isLit = true;
+        var isLit = true;
+        var isStart = this.r === 0 && this.c === 0;
+        var isEnd = this.r === rows - 1 && this.c === cols - 1;
         if (isLit) {
-            if (this.wallLeft) {
+            if (isStart) {
+                ctx.drawImage(startSquare, x, y, cellSize * 1.2, cellSize * 1.2);
+            }
+            if (isEnd) {
+                ctx.drawImage(endSquare, x + 4, y, cellSize * 1.2, cellSize * 1.2);
+            }
+            if (this.wallLeft && !isStart) {
                 ctx.drawImage(wall, x - cellSize / 2, y, cellSize * 1.2, cellSize * 1.2);
             }
-
-            if (this.wallUp) {
+            if (this.wallUp && !isStart) {
                 ctx.save();
                 ctx.translate(x + cellSize / 2, y + cellSize / 2);
                 ctx.rotate(Math.PI / 2);
@@ -232,17 +345,17 @@ function Cell(r, c) {
                 ctx.restore();
             }
 
-            if (this.wallRight && this.c == cols - 1) {
+            if (this.wallRight && this.c == cols - 1 && !isEnd) {
                 ctx.drawImage(wall, x + cellSize / 2, y, cellSize * 1.2, cellSize * 1.2);
             }
 
-            // if (this.wallDown && this.r == rows - 1) {
-            //     ctx.save();
-            //     ctx.translate(x + cellSize / 2, y + cellSize / 2);
-            //     ctx.rotate(Math.PI / 2);
-            //     ctx.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize * 1.2, cellSize * 1.2);
-            //     ctx.restore();
-            // }
+            if (this.wallDown && this.r == rows - 1 && !isEnd) {
+                ctx.save();
+                ctx.translate(x + cellSize / 2, y + cellSize / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.drawImage(wall, -cellSize + cellSize, -cellSize + cellSize / 2 - 10, cellSize * 1.2, cellSize * 1.2);
+                ctx.restore();
+            }
 
             // wall.strokeStyle = "yellow"; // Set the wall color to black
             // ctx.lineWidth = 8; // Increase the line width to make the walls thicker
@@ -329,27 +442,106 @@ function updateLightmap(light) {
 }
 
 
-function renderOpeningScreen() {
+function renderOpeningNeuro() {
+    start_bgm();
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = "pink";
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    let img = neuro_screens[neuro_opening_counter];
+    let aspect = img.height / img.width;
+    let w = Math.min(canvas.width, img.width);
+    g.drawImage(img, 0, 0, w, w * aspect);
+
+    g.drawImage(press_enter, 0, 20 + 10 * Math.sin(new Date().getTime() / 150), w, w * aspect);
+}
+
+function renderOpeningEvil() {
+    start_bgm();
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = "black";
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    let img = evil_screens[evil_opening_counter];
+    let aspect = img.height / img.width;
+    let w = Math.min(canvas.width, img.width);
+    g.drawImage(img, 0, 0, w, w * aspect);
+
+    g.drawImage(press_enter, 0, 20 + 10 * Math.sin(new Date().getTime() / 150), w, w * aspect);
+}
+
+function renderWin() {
+    start_bgm();
+    if (win_screen_counter != win_screens.length - 1) {
+        g.clearRect(0, 0, canvas.width, canvas.height);
+        g.fillStyle = "pink";
+        g.fillRect(0, 0, canvas.width, canvas.height);
+        let img = win_screens[win_screen_counter];
+        let aspect = img.height / img.width;
+        let w = Math.min(canvas.width, img.width);
+        g.drawImage(img, 0, 0, w, w * aspect);
+
+        g.drawImage(press_enter, 0, 20 + 10 * Math.sin(new Date().getTime() / 150), w, w * aspect);
+    } else {
+        g.clearRect(0, 0, canvas.width, canvas.height);
+        g.fillStyle = "pink";
+        g.fillRect(0, 0, canvas.width, canvas.height);
+
+        let img = win_screens[win_screen_counter];
+        let aspect = img.width / img.height;
+        let h = Math.min(canvas.height, img.height);
+        g.drawImage(img, 0, 0, aspect * h, h);
+    }
+}
+
+function renderLose() {
+    stop_bgm();
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
     g.fillRect(0, 0, canvas.width, canvas.height);
 
+
+    if (canvas.width < canvas.height) {
+        let img = lose_screens[lose_screen_counter];
+        let aspect = img.height / img.width;
+        let w = Math.min(canvas.width, img.width);
+        g.drawImage(img, 0, 0, w, w * aspect);
+    } else {
+        let img = lose_screens[lose_screen_counter];
+        let aspect = img.width / img.height;
+        let h = Math.min(canvas.height, img.height);
+        g.drawImage(img, 0, 0, aspect * h, h);
+    }
+    
+}
+
+function drawGameNeuro() {
+    start_bgm();
+    // Clear the canvas
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = "black";
+    g.fillRect(0, 0, canvas.width, canvas.height);
+
+    g.fillStyle = 'rgb(162, 140, 124)';
+    g.fillRect(0, 0, cellSize * grid.length, cellSize * grid[0].length);
+
+    g.drawImage(groundOverlay, 0, 0, cellSize * grid.length, cellSize * grid[0].length);
+
+    // Draw the maze
+    g.drawImage(mazeCanvas, 0, 0, canvas.width, canvas.height);
+
+    // Draw the player, objects, and UI
+    lights.forEach(light => light.drawCandle());
+    player.show();
+
+    // Display the number of lights remaining
     g.fillStyle = "white";
-    g.font = "30px Arial";
-    g.textAlign = "center";
-    g.fillText("Welcome to Neuro Maze", canvas.width / 2, canvas.height / 2 - 40);
-    g.font = "20px Arial";
-    g.fillText("Press Enter to Start", canvas.width / 2, canvas.height / 2 + 20);
+    g.font = "32px Arial";
+    g.textBaseline="top";
+    g.fillText("Press [space] to leave a candle.", 200, canvas.height - 70);
+    g.fillText("Candles remaining: " + player.lights, 200, canvas.height - 36);
 }
 
-function startGame() {
-    gameState = "playing";
-    setup();
-    // Start the game loop
-    requestAnimationFrame(gameLoop);
-}
-
-function drawGame() {
+function drawGameEvil() {
+    start_bgm();
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.fillStyle = "black";
@@ -358,21 +550,8 @@ function drawGame() {
     // Render all lights
     player.showLight();
     lights.forEach(light => light.drawLight());
-
-    // Draw the start square (top-left corner)
-    g.fillStyle = "green";
-    g.fillRect(0, 0, cellSize, cellSize);
-    g.fillStyle = "white";
-    g.fillText("Start", 20, 20);
-
-
-    // Draw the end square (bottom-right corner)
-    let x = (cols - 1) * cellSize;
-    let y = (rows - 1) * cellSize;
-    g.fillStyle = "red";
-    g.fillRect(x, y, cellSize, cellSize);
-    g.fillStyle = "white";
-    g.fillText("Exit", x + 20, y + 20);
+    renderLight(cellSize / 2, cellSize / 2, 2 * cellSize / 2);
+    renderLight(cellSize * (cols - 1) + cellSize / 2, cellSize * (rows - 1) + cellSize / 2, 2 * cellSize / 2);
 
     // Draw the maze
     g.save();
@@ -383,46 +562,182 @@ function drawGame() {
     // Draw the player, objects, and UI
     lights.forEach(light => light.drawCandle());
     player.show();
+
+    // Timer
+    if (gameState !== "winning_evil") {
+        let now_seconds = new Date().getTime() / 1000;
+        let time_remaining = Math.max(0, timer_length_seconds - (now_seconds - timer_start_seconds));
+        let seconds_remaining = Math.floor(time_remaining);
+        let ms_remaining = Math.floor((time_remaining - seconds_remaining) * 100.0);
+        g.font = '68px Courier New';
+        g.fillStyle = 'orangered';
+        g.textBaseline = 'top';
+        g.fillText(`${seconds_remaining}:${ms_remaining}`, canvas.width - 220, 0);
+    }
 }
 
-function updateSize() {
-    if (canvas.width === window.innerWidth && canvas.height === window.innerHeight) {
+function updateSize(force = false) {
+    if (!force && canvas.width === window.innerWidth && canvas.height === window.innerHeight) {
         return;
     }
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
+    mazeWidth = canvas.width - 100;
+    mazeHeight = canvas.height - 100;
+    cellSize = Math.min(Math.ceil(mazeWidth / cols), Math.ceil(mazeHeight / rows));
 
+    mazeCanvas.width = canvas.width;
+    mazeCanvas.height = canvas.height;
+    mazeCtx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
     if (grid.length === 0) {
         return;
     }
-    mazeCanvas = new OffscreenCanvas(canvas.width, canvas.height);
-    mazeCtx = mazeCanvas.getContext("2d");
+    mazeCtx.drawImage(groundOverlay, 0, 0, cellSize * grid.length, cellSize * grid[0].length);
+
     // Draw the grid to an offscreen texture.
     for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
+            if ((r === 0 && c === 0) || (r === rows - 1 && c === cols - 1)) { continue; }
             grid[r][c].show(mazeCtx);
         }
     }
+    grid[0][0].show(mazeCtx);
+    grid[rows - 1][cols - 1].show(mazeCtx);
 }
+
+winning_start_seconds = 0;
+winning_delay_seconds = 0.7;
 
 function gameLoop() {
     updateSize();
-    if (gameState === "playing") {
-        drawGame();
-    } else if (gameState === "opening") {
-        renderOpeningScreen();
+    if (gameState === "playing_neuro" || gameState === "winning_neuro") {
+        drawGameNeuro();
+    } else if (gameState === "opening_neuro") {
+        renderOpeningNeuro();
+    } else if (gameState === "opening_evil") {
+        renderOpeningEvil();
+    } else if (gameState === "playing_evil" || gameState === "winning_evil") {
+        let now_seconds = new Date().getTime() / 1000;
+        let time_remaining = timer_length_seconds - (now_seconds - timer_start_seconds);
+        if (time_remaining <= 0) {
+            gameState = "lose";
+            if (lose_screen_counter >= lose_screens.length - 1) {
+                show_lose_image();
+            }
+            vineboom();
+        }
+        drawGameEvil();
+    } else if (gameState === "win") {
+        renderWin();
+    } else if (gameState === "lose") {
+        renderLose();
+    }
+
+    if (gameState === "winning_neuro") {
+        let now_seconds = new Date().getTime() / 1000;
+        if (now_seconds - winning_start_seconds >= winning_delay_seconds) {
+            gameState = "opening_evil";
+        }
+    } else if (gameState === "winning_evil") {
+        let now_seconds = new Date().getTime() / 1000;
+        if (now_seconds - winning_start_seconds >= winning_delay_seconds) {
+            gameState = "win";
+        }
     }
     requestAnimationFrame(gameLoop);
 }
 
+var neuro_screens = [neuro_opening_1, neuro_opening_2, neuro_opening_3, neuro_opening_4, neuro_opening_5];
+var neuro_opening_counter = 0;
+
+var evil_screens = [evil_opening_1];
+var evil_opening_counter = 0;
+
+var win_screens = [win_screen_1, win_screen_2];
+var win_screen_counter = 0;
+
+var lose_screens = [lose_1];
+var lose_screen_counter = 0;
+
+function reset_screens() {
+    neuro_opening_counter = 0;
+    evil_opening_counter = 0;
+    win_screen_counter = 0;
+    lose_screen_counter = 0;
+}
 // Listen for key presses to start the game
-window.addEventListener("keydown", function (event) {
-    if (event.key === "Enter" && gameState === "opening") {
-        g.clearRect(0, 0, canvas.width, canvas.height);
-        startGame();
+window.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+        if (gameState === "opening_neuro") {
+            neuro_opening_counter++;
+            if (neuro_opening_counter >= neuro_screens.length) {
+                setup();
+            }
+        } else if (gameState === "opening_evil") {
+            evil_opening_counter++;
+            if (evil_opening_counter >= evil_screens.length) {
+                gameState = "playing_evil";
+                player.reset(evilFront);
+                player.lights = 0;
+                timer_start_seconds = new Date().getTime() / 1000;
+            }
+        } else if (gameState === "win") {
+            win_screen_counter++;
+            if (win_screen_counter >= win_screens.length - 1) {
+                show_win_image();
+            }
+            if (win_screen_counter >= win_screens.length) {
+                reset_screens();
+                hide_win_image();
+                gameState = "opening_neuro";
+                rows += 2;
+                cols += 2;
+                setup();
+            }
+        }
+        else if (gameState === "lose") {
+            lose_screen_counter++;
+            if (lose_screen_counter >= lose_screens.length) {
+                reset_screens();
+                hide_lose_image();
+                gameState = "opening_neuro";
+            }
+        }
+    }
+
+    if (gameState === "playing_neuro" || gameState === "playing_evil" && player !== undefined) {
+        if (e.key === "ArrowUp") {
+            player.move("up");
+        } else if (e.key === "ArrowRight") {
+            player.move("right");
+        } else if (e.key === "ArrowDown") {
+            player.move("down");
+        } else if (e.key === "ArrowLeft") {
+            player.move("left");
+        } else if (e.key === " ") {
+            player.dropObject();
+        }
     }
 });
+
+var click_initiated = false;
+// Listen for user interaction to start background music
+window.addEventListener("click", function() {
+    click_initiated = true;
+    if (!bgm_playing && gameState == "opening_neuro") {
+        start_bgm();
+    }
+});
+
+window.addEventListener("keydown", function() {
+    click_initiated = true;
+    if (!bgm_playing && gameState == "opening_neuro") {
+        start_bgm();
+    }
+});
+
+addEventListener("resize", (event) => updateSize());
+addEventListener("fullscreenchange", (event) => updateSize());
 
 // Start the game loop
 requestAnimationFrame(gameLoop);
