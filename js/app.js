@@ -9,11 +9,19 @@ var cols = 12;
 var rows = 12;
 var cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
 
-function updateSize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
+function loadImage(path) {
+    var img = new Image();
+    img.src = path;
+    return img;
 }
+
+// Load sprites
+var neuroFront = loadImage('../img/neuro_front.png');
+var neuroLeft = loadImage('../img/neuro_left.png');
+var neuroRight = loadImage('../img/neuro_right.png');
+var neuroBack = loadImage('../img/neuro_back.png');
+var candle = loadImage('../img/candle.png');
+var groundOverlay = loadImage('../img/ground_overlay.png');
 
 var grid = [];
 var path = [];
@@ -98,32 +106,29 @@ function Light(r, c) {
     this.c = c;
     this.brightness = 3;
 
-    this.show = function () {
+    this.drawLight = function () {
         var x = this.c * cellSize;
         var y = this.r * cellSize;
         var radius = this.brightness * cellSize; // Radius of 5 grid cells
 
         renderLight(x + cellSize / 2, y + cellSize / 2, radius);
+        
+    };
+
+    this.drawCandle = function () {
+        var x = this.c * cellSize;
+        var y = this.r * cellSize;
+        g.drawImage(candle, x, y, cellSize, cellSize);
     };
 }
-
-var neuroFront = new Image();
-var neuroLeft = new Image();
-var neuroRight = new Image();
-var neuroBack = new Image();
-neuroFront.src = '../img/neuro_front.png';
-neuroLeft.src = '../img/neuro_left.png';
-neuroRight.src = '../img/neuro_right.png';
-neuroBack.src = '../img/neuro_back.png';
 
 function Player(r, c) {
     this.r = r;
     this.c = c;
     this.visualR = r;
     this.visualC = c;
-    this.lights = 3;
     this.currentSprite = neuroFront;
-
+    this.lights = 3;
 
     this.move = function (dir) {
         if (dir === "up" && this.r > 0 && !grid[this.r][this.c].wallUp) {
@@ -141,11 +146,15 @@ function Player(r, c) {
         }
     };
 
-    this.show = function () {
-
+    this.showLight = function () {
         var x = this.visualC * cellSize;
         var y = this.visualR * cellSize;
         renderLight(x + cellSize / 2, y + cellSize / 2, 3 * cellSize / 2);
+    }
+    
+    this.show = function () {
+        var x = this.visualC * cellSize;
+        var y = this.visualR * cellSize;
 
         g.drawImage(this.currentSprite, x, y, cellSize, cellSize);
         this.visualR += (this.r - this.visualR) * 0.1;
@@ -154,7 +163,7 @@ function Player(r, c) {
         // Display the number of highlight objects remaining
         g.fillStyle = "white";
         g.font = "16px Arial";
-        g.fillText("Lights remaining: " + this.lights, 10, canvas.height - 10);
+        g.fillText("Candles remaining: " + this.lights, 200, canvas.height - 20);
     };
 
     this.dropObject = function () {
@@ -200,17 +209,6 @@ function Cell(r, c) {
         var isLit = isNearPlayer || lightmap[this.r][this.c] >= 1;
         isLit = true;
         if (isLit) {
-            if (this.r === 0 && this.c === 0) {
-                g.fillStyle = "green"; // Top-left cell
-                g.fillRect(x, y, cellSize, cellSize);
-                g.fillStyle = "white";
-                g.fillText("start", x + 5, y + 15);
-            } else if (this.r === rows - 1 && this.c === cols - 1) {
-                g.fillStyle = "green"; // Bottom-right cell
-                g.fillRect(x, y, cellSize, cellSize);
-                g.fillStyle = "white";
-                g.fillText("end", x + 5, y + 15);
-            }
             g.strokeStyle = "black"; // Set the wall color to black
             g.lineWidth = 4; // Increase the line width to make the walls thicker
 
@@ -318,18 +316,27 @@ function startGame() {
 }
 
 function drawGame() {
-    
-
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render all lights
+    player.showLight();
+    lights.forEach(light => light.drawLight());
 
     // Draw the start square (top-left corner)
     g.fillStyle = "green";
     g.fillRect(0, 0, cellSize, cellSize);
+    g.fillStyle = "white";
+    g.fillText("Start", 20, 20);
+
 
     // Draw the end square (bottom-right corner)
-    g.fillStyle = "green";
-    g.fillRect((cols - 1) * cellSize, (rows - 1) * cellSize, cellSize, cellSize);
+    let x = (cols - 1) * cellSize;
+    let y = (rows - 1) * cellSize;
+    g.fillStyle = "red";
+    g.fillRect(x, y, cellSize, cellSize);
+    g.fillStyle = "white";
+    g.fillText("Exit", x + 20, y +20);
 
     // Draw the grid
     for (var r = 0; r < rows; r++) {
@@ -337,14 +344,20 @@ function drawGame() {
             grid[r][c].show();
         }
     }
+    
+    // Draw the player, objects, and UI
+    lights.forEach(light => light.drawCandle());
+    player.show();    
+}
 
-    // Draw the player character
-    player.show();
-
-    lights.forEach(light => light.show());
+function updateSize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cellSize = Math.min(Math.ceil(canvas.width / cols), Math.ceil(canvas.height / rows));
 }
 
 function gameLoop() {
+    updateSize();
     if (gameState === "playing") {
         drawGame();
     } else if (gameState === "opening") {
