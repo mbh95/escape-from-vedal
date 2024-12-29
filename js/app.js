@@ -22,6 +22,7 @@ var neuroRight = loadImage('../img/neuro_right.png');
 var neuroBack = loadImage('../img/neuro_back.png');
 var candle = loadImage('../img/candle.png');
 var groundOverlay = loadImage('../img/ground_overlay.png');
+var wall = loadImage('../img/wall.png');
 
 var grid = [];
 var path = [];
@@ -112,7 +113,7 @@ function Light(r, c) {
         var radius = this.brightness * cellSize; // Radius of 5 grid cells
 
         renderLight(x + cellSize / 2, y + cellSize / 2, radius);
-        
+
     };
 
     this.drawCandle = function () {
@@ -151,7 +152,7 @@ function Player(r, c) {
         var y = this.visualR * cellSize;
         renderLight(x + cellSize / 2, y + cellSize / 2, 3 * cellSize / 2);
     }
-    
+
     this.show = function () {
         var x = this.visualC * cellSize;
         var y = this.visualR * cellSize;
@@ -209,33 +210,59 @@ function Cell(r, c) {
         var isLit = isNearPlayer || lightmap[this.r][this.c] >= 1;
         isLit = true;
         if (isLit) {
-            g.strokeStyle = "black"; // Set the wall color to black
-            g.lineWidth = 4; // Increase the line width to make the walls thicker
+            g.save();
+            g.globalCompositeOperation = "multiply";
+            if (this.wallLeft) {
+                g.drawImage(wall, x - cellSize / 2, y, cellSize*1.2, cellSize*1.2);
+            }
 
             if (this.wallUp) {
-                g.beginPath();
-                g.moveTo(x, y);
-                g.lineTo(x + cellSize, y);
-                g.stroke();
+                g.save();
+                g.translate(x + cellSize / 2, y + cellSize / 2);
+                g.rotate(Math.PI / 2);
+                g.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize*1.2, cellSize*1.2);
+                g.restore();
             }
-            if (this.wallRight) {
-                g.beginPath();
-                g.moveTo(x + cellSize, y);
-                g.lineTo(x + cellSize, y + cellSize);
-                g.stroke();
+
+            if (this.wallRight && this.c == cols - 1) {
+                g.drawImage(wall, x + cellSize / 2, y, cellSize*1.2, cellSize*1.2);
             }
-            if (this.wallDown) {
-                g.beginPath();
-                g.moveTo(x + cellSize, y + cellSize);
-                g.lineTo(x, y + cellSize);
-                g.stroke();
+
+            if (this.wallUp) {
+                g.save();
+                g.translate(x + cellSize / 2, y + cellSize / 2);
+                g.rotate(Math.PI / 2);
+                g.drawImage(wall, -cellSize, -cellSize + cellSize / 2 - 10, cellSize*1.2, cellSize*1.2);
+                g.restore();
             }
-            if (this.wallLeft) {
-                g.beginPath();
-                g.moveTo(x, y + cellSize);
-                g.lineTo(x, y);
-                g.stroke();
-            }
+            g.restore();
+
+            // g.strokeStyle = "yellow"; // Set the wall color to black
+            // g.lineWidth = 8; // Increase the line width to make the walls thicker
+            // if (this.wallUp) {
+            //     g.beginPath();
+            //     g.moveTo(x, y);
+            //     g.lineTo(x + cellSize, y);
+            //     g.stroke();
+            // }
+            // if (this.wallRight) {
+            //     g.beginPath();
+            //     g.moveTo(x + cellSize, y);
+            //     g.lineTo(x + cellSize, y + cellSize);
+            //     g.stroke();
+            // }
+            // if (this.wallDown) {
+            //     g.beginPath();
+            //     g.moveTo(x + cellSize, y + cellSize);
+            //     g.lineTo(x, y + cellSize);
+            //     g.stroke();
+            // }
+            // if (this.wallLeft) {
+            //     g.beginPath();
+            //     g.moveTo(x, y + cellSize);
+            //     g.lineTo(x, y);
+            //     g.stroke();
+            // }
         } else {
             g.fillStyle = "black";
             g.fillRect(x, y, cellSize, cellSize);
@@ -336,7 +363,7 @@ function drawGame() {
     g.fillStyle = "red";
     g.fillRect(x, y, cellSize, cellSize);
     g.fillStyle = "white";
-    g.fillText("Exit", x + 20, y +20);
+    g.fillText("Exit", x + 20, y + 20);
 
     // Draw the grid
     for (var r = 0; r < rows; r++) {
@@ -344,10 +371,10 @@ function drawGame() {
             grid[r][c].show();
         }
     }
-    
+
     // Draw the player, objects, and UI
     lights.forEach(light => light.drawCandle());
-    player.show();    
+    player.show();
 }
 
 function updateSize() {
@@ -367,7 +394,7 @@ function gameLoop() {
 }
 
 // Listen for key presses to start the game
-window.addEventListener("keydown", function(event) {
+window.addEventListener("keydown", function (event) {
     if (event.key === "Enter" && gameState === "opening") {
         g.clearRect(0, 0, canvas.width, canvas.height);
         startGame();
