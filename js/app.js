@@ -16,8 +16,11 @@ var g = canvas.getContext("2d");
 var mazeCanvas = new OffscreenCanvas(canvas.width, canvas.height);
 var mazeCtx = mazeCanvas.getContext("2d");
 
-var cols = 16;
-var rows = 16;
+var timerCanvas = new OffscreenCanvas(200, 200);
+var timerCtx = timerCanvas.getContext("2d");
+
+var cols = 4;
+var rows = 4;
 var cellSize = Math.min(Math.ceil(mazeWidth / cols), Math.ceil(mazeHeight / rows));
 
 function loadImage(path) {
@@ -95,7 +98,7 @@ var lights = [];
 var lightmap = Array(rows).fill().map(() => Array(cols).fill(0));
 var gameState = "opening_neuro"; // Track the game state
 
-var timer_length_seconds = 15;
+var timer_length_seconds = 6;
 var timer_start_seconds = -1;
 
 function show_win_image() {
@@ -580,10 +583,22 @@ function drawGameEvil() {
         let time_remaining = Math.max(0, timer_length_seconds - (now_seconds - timer_start_seconds));
         let seconds_remaining = Math.floor(time_remaining);
         let ms_remaining = Math.floor((time_remaining - seconds_remaining) * 100.0);
-        g.font = '68px Courier New';
-        g.fillStyle = 'orangered';
-        g.textBaseline = 'top';
-        g.fillText(`${seconds_remaining}:${ms_remaining}`, canvas.width - 220, 0);
+        let timer_urgent_seconds = 5;
+        let timerScale = 1.0;
+        let timerScales = [1.2, 1.5, 2.0, 3.0, 4.0, 5.0];
+        if (seconds_remaining <= timer_urgent_seconds) {
+            timerScale = timerScales[timer_urgent_seconds - seconds_remaining];
+        }
+
+        timerCtx.font = '68px Courier New';
+        timerCtx.fillStyle = 'orangered';
+        timerCtx.textBaseline = 'top';
+        timerCtx.clearRect(0,0, timerCanvas.width, timerCanvas.height);
+        timerCtx.fillText(`${seconds_remaining}:${ms_remaining}`, 0, 0);
+        let timerWidth = Math.min(timerCanvas.width * timerScale, canvas.width);
+        console.log(`${timerWidth} (${timerScale})`);
+        let timerRatio = timerCanvas.height/timerCanvas.width;
+        g.drawImage(timerCanvas, canvas.width - timerWidth - 20, 0, timerWidth , timerWidth * timerRatio);
     }
 }
 
