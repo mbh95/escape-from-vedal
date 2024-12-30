@@ -19,8 +19,8 @@ var mazeCtx = mazeCanvas.getContext("2d");
 var timerCanvas = new OffscreenCanvas(200, 200);
 var timerCtx = timerCanvas.getContext("2d");
 
-var cols = 4;
-var rows = 4;
+var cols = 16;
+var rows = 16;
 var cellSize = Math.min(Math.ceil(mazeWidth / cols), Math.ceil(mazeHeight / rows));
 
 function loadImage(path) {
@@ -60,8 +60,6 @@ var win_screen_2 = loadImage("./img/win_2.png");
 var lose_1 = loadImage("./img/lose_1.png");
 
 var bgm_ever_started = false;
-var bgm = new Audio('./audio/bensound-prism.mp3');
-bgm.loop = true;
 
 // function playBgm() {
 //     console.log("START BGM");
@@ -98,7 +96,7 @@ var lights = [];
 var lightmap = Array(rows).fill().map(() => Array(cols).fill(0));
 var gameState = "opening_neuro"; // Track the game state
 
-var timer_length_seconds = 6;
+var timer_length_seconds = 15;
 var timer_start_seconds = -1;
 
 function show_win_image() {
@@ -130,13 +128,13 @@ function vineboom() {
 
 function playBgm() {
     document.getElementById("bgm").play();
+    document.getElementById("bgm").loop = true;
 }
 function pauseBgm() {
     document.getElementById("bgm").pause();
 }
 
 function setup() {
-    gameState = "playing_neuro";
     var unvisited = [];
     grid = [];
     lightmap = Array(rows).fill().map(() => Array(cols).fill(0));
@@ -457,6 +455,7 @@ function updateLightmap(light) {
     }
 }
 
+let speaker_neuroIntro = ["neuro", "evil", "evil", "neuro", "neuro"];
 
 function renderOpeningNeuro() {
     canvas_container.style = "background-color: pink";
@@ -465,10 +464,30 @@ function renderOpeningNeuro() {
     g.fillRect(0, 0, canvas.width, canvas.height);
     let img = neuro_screens[neuro_opening_counter];
     let aspect = img.height / img.width;
-    let w = Math.min(canvas.width, img.width);
-    g.drawImage(img, 0, 0, w, w * aspect);
+    let w = Math.min(canvas.width, img.width) * 0.85;
+    let h = w * aspect;
+    g.drawImage(img, canvas.width / 2 - w / 2, 0, w, h);
 
-    g.drawImage(press_enter, 0, 20 + 10 * Math.sin(new Date().getTime() / 150), w, w * aspect);
+    g.save();
+    g.globalAlpha = (1 + Math.sin(new Date().getTime() / 180)) / 2;
+    g.drawImage(press_enter, canvas.width / 2 - w / 2, 20, w, w * aspect);
+    g.restore();
+
+    let speaker_size = 2;
+    let nonspeaker_size = 2;
+    if (speaker_neuroIntro[neuro_opening_counter] === "neuro") {
+        g.save();
+        g.imageSmoothingEnabled = false;
+        g.drawImage(neuroFront, 675, 20 + 10 * Math.sin(new Date().getTime() / 150), neuroFront.width * speaker_size, neuroFront.height * speaker_size);
+        g.drawImage(evilFront, -75, 20, evilFront.width * nonspeaker_size, evilFront.height * nonspeaker_size);
+        g.restore();
+    } else {
+        g.save();
+        g.imageSmoothingEnabled = false;
+        g.drawImage(neuroFront, 675, 20, neuroFront.width * nonspeaker_size, neuroFront.height * nonspeaker_size);
+        g.drawImage(evilFront, -75, 20 + 10 * Math.sin(new Date().getTime() / 150), evilFront.width * speaker_size, evilFront.height * speaker_size);
+        g.restore();
+    }
 }
 
 function renderOpeningEvil() {
@@ -478,33 +497,53 @@ function renderOpeningEvil() {
     g.fillRect(0, 0, canvas.width, canvas.height);
     let img = evil_screens[evil_opening_counter];
     let aspect = img.height / img.width;
-    let w = Math.min(canvas.width, img.width);
-    g.drawImage(img, 0, 0, w, w * aspect);
+    let w = Math.min(canvas.width, img.width) * 0.85;
+    g.drawImage(img, canvas.width / 2 - w / 2, 0, w, w*aspect);
 
-    g.drawImage(press_enter, 0, 20 + 10 * Math.sin(new Date().getTime() / 150), w, w * aspect);
+    g.save();
+    g.globalAlpha = (1 + Math.sin(new Date().getTime() / 180)) / 2;
+    g.drawImage(press_enter, canvas.width / 2 - w / 2, 20, w, w * aspect);
+    g.restore();
+
+    let speaker_size = 2;
+    g.save();
+    g.imageSmoothingEnabled = false;
+    g.drawImage(evilFront, -75, 20 + 10 * Math.sin(new Date().getTime() / 150), evilFront.width * speaker_size, evilFront.height * speaker_size);
+    g.restore();
 }
+
+let speaker_win = ["neuro"];
 
 function renderWin() {
     canvas_container.style = "background-color: pink";
-    if (win_screen_counter != win_screens.length - 1) {
-        g.clearRect(0, 0, canvas.width, canvas.height);
-        g.fillStyle = "pink";
-        g.fillRect(0, 0, canvas.width, canvas.height);
-        let img = win_screens[win_screen_counter];
-        let aspect = img.height / img.width;
-        let w = Math.min(canvas.width, img.width);
-        g.drawImage(img, 0, 0, w, w * aspect);
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.fillStyle = "pink";
+    g.fillRect(0, 0, canvas.width, canvas.height);
+    let img = win_screens[win_screen_counter];
+    let aspect = img.height / img.width;
+    let w = Math.min(canvas.width, img.width) * 0.85;
+    let h = w * aspect;
+    g.drawImage(img, canvas.width / 2 - w / 2, 0, w, h);
 
-        g.drawImage(press_enter, 0, 20 + 10 * Math.sin(new Date().getTime() / 150), w, w * aspect);
+    g.save();
+    g.globalAlpha = (1 + Math.sin(new Date().getTime() / 180)) / 2;
+    g.drawImage(press_enter, canvas.width / 2 - w / 2, 20, w, w * aspect);
+    g.restore();
+
+    let speaker_size = 2;
+    let nonspeaker_size = 2;
+    if (speaker_win[win_screen_counter] === "neuro") {
+        g.save();
+        g.imageSmoothingEnabled = false;
+        g.drawImage(neuroFront, 675, 20 + 10 * Math.sin(new Date().getTime() / 150), neuroFront.width * speaker_size, neuroFront.height * speaker_size);
+        g.drawImage(evilFront, -75, 20, evilFront.width * nonspeaker_size, evilFront.height * nonspeaker_size);
+        g.restore();
     } else {
-        g.clearRect(0, 0, canvas.width, canvas.height);
-        g.fillStyle = "pink";
-        g.fillRect(0, 0, canvas.width, canvas.height);
-
-        let img = win_screens[win_screen_counter];
-        let aspect = img.width / img.height;
-        let h = Math.min(canvas.height, img.height);
-        g.drawImage(img, 0, 0, aspect * h, h);
+        g.save();
+        g.imageSmoothingEnabled = false;
+        g.drawImage(neuroFront, 675, 20, neuroFront.width * nonspeaker_size, neuroFront.height * nonspeaker_size);
+        g.drawImage(evilFront, -75, 20 + 10 * Math.sin(new Date().getTime() / 150), evilFront.width * speaker_size, evilFront.height * speaker_size);
+        g.restore();
     }
 }
 
@@ -549,7 +588,7 @@ function drawGameNeuro() {
     // Display the number of lights remaining
     g.fillStyle = "black";
     g.font = "32px Arial";
-    g.textBaseline="top";
+    g.textBaseline = "top";
     g.fillText("Press [space] to leave a candle.", 200, canvas.height - 70);
     g.fillText("Candles remaining: " + player.lights, 200, canvas.height - 36);
 }
@@ -593,12 +632,12 @@ function drawGameEvil() {
         timerCtx.font = '68px Courier New';
         timerCtx.fillStyle = 'orangered';
         timerCtx.textBaseline = 'top';
-        timerCtx.clearRect(0,0, timerCanvas.width, timerCanvas.height);
+        timerCtx.clearRect(0, 0, timerCanvas.width, timerCanvas.height);
         timerCtx.fillText(`${seconds_remaining}:${ms_remaining}`, 0, 0);
         let timerWidth = Math.min(timerCanvas.width * timerScale, canvas.width);
         console.log(`${timerWidth} (${timerScale})`);
-        let timerRatio = timerCanvas.height/timerCanvas.width;
-        g.drawImage(timerCanvas, canvas.width - timerWidth - 20, 0, timerWidth , timerWidth * timerRatio);
+        let timerRatio = timerCanvas.height / timerCanvas.width;
+        g.drawImage(timerCanvas, canvas.width - timerWidth - 20, 0, timerWidth, timerWidth * timerRatio);
     }
 }
 
@@ -645,7 +684,7 @@ function gameLoop() {
         drawGameEvil();
         let now_seconds = new Date().getTime() / 1000;
         let time_remaining = timer_length_seconds - (now_seconds - timer_start_seconds);
-        if (time_remaining <= 0) {
+        if (gameState !== "winning_evil" && time_remaining <= 0) {
             gameState = "lose";
             show_lose_image();
             pauseBgm();
@@ -696,6 +735,7 @@ window.addEventListener("keydown", function (e) {
         if (gameState === "opening_neuro") {
             neuro_opening_counter++;
             if (neuro_opening_counter >= neuro_screens.length) {
+                gameState = "playing_neuro";
                 setup();
             }
         } else if (gameState === "opening_evil") {
@@ -717,7 +757,7 @@ window.addEventListener("keydown", function (e) {
                 gameState = "opening_neuro";
                 rows += 2;
                 cols += 2;
-                setup();
+                timer_length_seconds += 1
             }
         }
         else if (gameState === "lose") {
@@ -748,14 +788,14 @@ window.addEventListener("keydown", function (e) {
 
 var click_initiated = false;
 // Listen for user interaction to start background music
-window.addEventListener("click", function() {
+window.addEventListener("click", function () {
     click_initiated = true;
     if (!bgm_ever_started && gameState == "opening_neuro") {
         playBgm();
     }
 });
 
-window.addEventListener("keydown", function() {
+window.addEventListener("keydown", function () {
     click_initiated = true;
     if (!bgm_ever_started && gameState == "opening_neuro") {
         playBgm();
@@ -765,8 +805,8 @@ window.addEventListener("keydown", function() {
 addEventListener("resize", (event) => updateSize());
 addEventListener("fullscreenchange", (event) => updateSize());
 
-window.addEventListener("keydown", function(e) {
-    if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+window.addEventListener("keydown", function (e) {
+    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].indexOf(e.code) > -1) {
         e.preventDefault();
     }
 }, false);
