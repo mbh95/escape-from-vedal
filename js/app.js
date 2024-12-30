@@ -482,6 +482,7 @@ function renderOpeningEvil() {
 }
 
 function renderWin() {
+    canvas_container.style = "background-color: pink";
     if (win_screen_counter != win_screens.length - 1) {
         g.clearRect(0, 0, canvas.width, canvas.height);
         g.fillStyle = "pink";
@@ -521,14 +522,13 @@ function renderLose() {
         let h = Math.min(canvas.height, img.height);
         g.drawImage(img, 0, 0, aspect * h, h);
     }
-    
 }
 
 function drawGameNeuro() {
-    canvas_container.style = "background-color: #ADD8E6";
+    canvas_container.style = "background-color: pink";
     // Clear the canvas
     g.clearRect(0, 0, canvas.width, canvas.height);
-    g.fillStyle = "#ADD8E6";
+    g.fillStyle = "pink";
     g.fillRect(0, 0, canvas.width, canvas.height);
 
     g.fillStyle = 'rgb(162, 140, 124)';
@@ -651,6 +651,7 @@ function gameLoop() {
         let now_seconds = new Date().getTime() / 1000;
         if (now_seconds - winning_start_seconds >= winning_delay_seconds) {
             gameState = "win";
+            pauseBgm();
         }
     }
     requestAnimationFrame(gameLoop);
